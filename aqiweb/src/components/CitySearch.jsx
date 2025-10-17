@@ -1,21 +1,27 @@
-import React, { useState } from 'react'
-import axios from 'axios'
+import React, { useState } from 'react';
+import axios from 'axios';
 
-export default function CitySearch() {
-  const [city, setCity] = useState('')
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState('')
+// Update the component to accept a prop 'onDataLoaded'
+export default function CitySearch({ onDataLoaded }) {
+  const [city, setCity] = useState('');
+  const [error, setError] = useState('');
 
-  const fetchCityAQI = async () => {
-    try {
-      setError('')
-      const res = await axios.get(`/api/city/${city}`)
-      setResult(res.data)
-    } catch (err) {
-      setResult(null)
-      setError('City not found or server error.')
+  const fetchCityData = async () => {
+    if (!city) {
+      setError('Please enter a city name.');
+      return;
     }
-  }
+    try {
+      setError('');
+      // Fetch historical data from the new endpoint
+      const res = await axios.get(`/api/city/${city}/history`);
+      // Pass the data up to the parent App component
+      onDataLoaded(res.data, city);
+    } catch (err) {
+      onDataLoaded([], city); // Clear chart on error
+      setError('City not found or server error.');
+    }
+  };
 
   return (
     <div className="bg-white shadow-md rounded-lg p-6">
@@ -29,7 +35,7 @@ export default function CitySearch() {
           className="w-full sm:w-2/3 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
         />
         <button
-          onClick={fetchCityAQI}
+          onClick={fetchCityData}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
         >
           Search
@@ -37,13 +43,6 @@ export default function CitySearch() {
       </div>
 
       {error && <p className="text-red-600 mt-3">{error}</p>}
-      {result && (
-        <div className="mt-4 border-t pt-3">
-          <p><span className="font-medium">City:</span> {result.city}</p>
-          <p><span className="font-medium">AQI:</span> {result.aqi}</p>
-          <p><span className="font-medium">Date:</span> {new Date(result.reading_date).toLocaleString()}</p>
-        </div>
-      )}
     </div>
-  )
+  );
 }
