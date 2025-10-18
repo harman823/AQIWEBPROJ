@@ -1,48 +1,80 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
 
-// Update the component to accept a prop 'onDataLoaded'
-export default function CitySearch({ onDataLoaded }) {
-  const [city, setCity] = useState('');
-  const [error, setError] = useState('');
+// CitySearch Component
+const CitySearch = ({ onDataLoaded }) => {
+    const [city, setCity] = useState('');
+    const [loading, setLoading] = useState(false);
 
-  const fetchCityData = async () => {
-    if (!city) {
-      setError('Please enter a city name.');
-      return;
-    }
-    try {
-      setError('');
-      // Fetch historical data from the new endpoint
-      const res = await axios.get(`/api/city/${city}/history`);
-      // Pass the data up to the parent App component
-      onDataLoaded(res.data, city);
-    } catch (err) {
-      onDataLoaded([], city); // Clear chart on error
-      setError('City not found or server error.');
-    }
-  };
+    const handleSearch = async () => {
+        if (!city.trim()) return;
+        
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/city/${city}/history`);
+            const data = await response.json();
+            onDataLoaded(data, city);
+        } catch (error) {
+            console.error('Error fetching city data:', error);
+            onDataLoaded([], city); // Clear data on error
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  return (
-    <div className="bg-white shadow-md rounded-lg p-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">Search City AQI</h2>
-      <div className="flex flex-col sm:flex-row items-center gap-3">
-        <input
-          type="text"
-          placeholder="Enter city name"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          className="w-full sm:w-2/3 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:ring-blue-200"
-        />
-        <button
-          onClick={fetchCityData}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          Search
-        </button>
-      </div>
+    // Handle Enter key press for searching
+    const handleKeyPress = (event) => {
+        if (event.key === 'Enter') {
+            handleSearch();
+        }
+    };
 
-      {error && <p className="text-red-600 mt-3">{error}</p>}
-    </div>
-  );
-}
+    useEffect(() => {
+        // This ensures Feather icons are rendered when the component updates
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+    }, [loading]);
+
+    return (
+        <div className="card bg-slate-800 rounded-xl p-6 shadow-lg">
+            <h2 className="text-xl font-bold mb-4 flex items-center">
+                <i data-feather="search" className="mr-2 text-primary-400"></i>
+                City AQI History
+            </h2>
+            <div className="flex space-x-2">
+                <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Enter city name..."
+                    className="flex-1 bg-slate-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 transition duration-300"
+                />
+                <button
+                    onClick={handleSearch}
+                    disabled={loading}
+                    className={`px-4 py-2 rounded-lg font-medium flex items-center justify-center transition duration-300 ${
+                        loading 
+                            ? 'bg-slate-600 cursor-not-allowed' 
+                            : 'bg-primary-600 hover:bg-primary-700'
+                    }`}
+                >
+                    {loading ? (
+                        <>
+                            <i data-feather="loader" className="animate-spin mr-2 h-5 w-5"></i>
+                            Searching...
+                        </>
+                    ) : (
+                        <>
+                            <i data-feather="search" className="mr-2 h-5 w-5"></i>
+                            Search
+                        </>
+                    )}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export default CitySearch;
+

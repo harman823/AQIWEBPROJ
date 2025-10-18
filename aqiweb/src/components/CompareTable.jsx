@@ -1,69 +1,83 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from 'react';
 
-export default function CompareTable() {
-  const [data, setData] = useState([]);
-  const [error, setError] = useState('');
+// Helper function to determine AQI status and styling
+const getAqiStatus = (aqi) => {
+    if (aqi > 4) return { text: 'Very Unhealthy', className: 'bg-red-900 text-red-100' };
+    if (aqi > 3) return { text: 'Unhealthy', className: 'bg-orange-900 text-orange-100' };
+    if (aqi > 2) return { text: 'Moderate', className: 'bg-yellow-900 text-yellow-100' };
+    return { text: 'Good', className: 'bg-green-900 text-green-100' };
+};
 
-  useEffect(() => {
-    axios.get('/api/compare')
-      .then(res => {
-        if (Array.isArray(res.data)) {
-          setData(res.data);
+const CompareTable = () => {
+    const [compareData, setCompareData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchCompareData = async () => {
+            try {
+                const response = await fetch('/api/compare');
+                const data = await response.json();
+                setCompareData(data.slice(0, 5)); // Ensure only top 5 are shown
+            } catch (error) {
+                console.error('Error fetching compare data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCompareData();
+    }, []);
+
+    useEffect(() => {
+        // This ensures Feather icons are rendered after the component updates
+        if (typeof feather !== 'undefined') {
+            feather.replace();
         }
-      })
-      .catch(() => {
-        setError('Could not fetch comparison data.');
-      });
-  }, []);
+    }, [loading, compareData]);
 
-  if (error) {
-    return <div className="text-red-500 text-center p-4">{error}</div>;
-  }
 
-  if (data.length === 0) {
     return (
-      <div className="text-gray-500 text-center p-4">
-        Loading comparison data or no data available.
-      </div>
+        <div className="card bg-slate-800 rounded-xl p-6 shadow-lg">
+            <h2 className="text-xl font-bold mb-4 flex items-center">
+                <i data-feather="bar-chart-2" className="mr-2 text-primary-400"></i>
+                Most Polluted Cities (Latest Reading)
+            </h2>
+            {loading ? (
+                <div className="h-48 flex items-center justify-center text-slate-400">
+                    <i data-feather="loader" className="animate-spin"></i>
+                </div>
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-700">
+                        <thead>
+                            <tr>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 uppercase tracking-wider">City</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 uppercase tracking-wider">AQI</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-300 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700">
+                            {compareData.map((city, index) => {
+                                const status = getAqiStatus(city.aqi);
+                                return (
+                                    <tr key={index} className={index % 2 === 0 ? 'bg-slate-800' : 'bg-slate-900/50'}>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">{city.city}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm font-bold">{city.aqi}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${status.className}`}>
+                                                {status.text}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
     );
-  }
+};
 
-  const headers = Object.keys(data[0] || {});
+export default CompareTable;
 
-  return (
-    <div className="bg-white shadow-md rounded-lg p-6">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">Top 5 Most Polluted Cities</h2>
-      <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-200 divide-y divide-gray-200 rounded-lg">
-          <thead className="bg-gray-100">
-            <tr>
-              {headers.map((header) => (
-                <th
-                  key={header}
-                  className="px-4 py-2 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider"
-                >
-                  {header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-100">
-            {data.map((row, i) => (
-              <tr key={i} className="hover:bg-gray-50">
-                {headers.map((header) => (
-                  <td key={header} className="px-4 py-2 text-sm text-gray-800">
-                    {/* Format the date for better readability */}
-                    {header === 'reading_date'
-                      ? new Date(row[header]).toLocaleString()
-                      : row[header] ?? "-"}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
