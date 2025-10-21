@@ -1,7 +1,6 @@
-Flask>=2.0
-supabase>=1.0
-python-dotenv>=0.20
-pandas>=2.0
-scikit-learn>=1.0
-gunicorn>=20.0
-numpy>=1.22
+flask
+python-dotenv
+supabase
+pandas
+statsmodels
+flask-cors

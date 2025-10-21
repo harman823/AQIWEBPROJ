@@ -1,60 +1,53 @@
 import pandas as pd
-from sklearn.linear_model import LinearRegression
-from supabase_client import supabase
+from supabase_client import fetch_city_data, fetch_all_data
+import pickle
+import os
 
-def get_data_as_dataframe() -> pd.DataFrame:
-    """
-    Fetches all data from the aqi_readings table in Supabase and returns a pandas DataFrame.
-    """
-    try:
-        response = supabase.table("aqi_readings").select("*").execute()
-        if response.data:
-            df = pd.DataFrame(response.data)
-            df['reading_date'] = pd.to_datetime(df['reading_date'])
-            # Normalize city names to avoid case sensitivity issues (e.g., "london" vs "London")
-            df['city'] = df['city'].str.title()
-            return df
-        return pd.DataFrame()
-    except Exception as e:
-        print(f"Error fetching data from Supabase: {e}")
-        return pd.DataFrame()
+def get_yearly_data(city):
+    """Fetches and processes yearly average AQI data for a city."""
+    data = fetch_city_data(city)
+    if not data:
+        return None
+    df = pd.DataFrame(data)
+    df['reading_date'] = pd.to_datetime(df['reading_date'])
+    df.set_index('reading_date', inplace=True)
+    yearly_df = df.resample('Y').mean(numeric_only=True)
+    return yearly_df.reset_index()
 
-def identify_improving_cities():
-    """
-    Identifies cities with an improving AQI trend and returns detailed statistics.
-    """
-    df = get_data_as_dataframe()
-    if df.empty or 'aqi' not in df.columns or 'reading_date' not in df.columns:
-        return []
+def predict_aqi_for_years(city, years=1):
+    """Loads a pre-trained model and predicts future AQI."""
+    model_path = os.path.join('models', f'{city}_model.pkl')
+    if not os.path.exists(model_path):
+        return None, "Model for this city has not been trained yet."
+    with open(model_path, 'rb') as pkl_file:
+        model_results = pickle.load(pkl_file)
+    steps = int(years) * 12
+    forecast = model_results.get_forecast(steps=steps)
+    return forecast.predicted_mean, None
 
-    improving_cities = []
+def get_city_rankings_and_yearly_data():
+    """Calculates overall and yearly AQI averages for all cities."""
+    all_data = fetch_all_data()
+    if not all_data:
+        return None
+    df = pd.DataFrame(all_data)
+    df = df.dropna(subset=['aqi', 'reading_date'])
+    df['reading_date'] = pd.to_datetime(df['reading_date'])
+    df['Year'] = df['reading_date'].dt.year
     
-    for city_name, group in df.groupby('city'):
-        if len(group) < 3:  # A trend requires at least 3 data points
-            continue
-
-        group = group.sort_values('reading_date').copy()
+    city_overall_avg = df.groupby('city')['aqi'].mean().sort_values().reset_index()
+    city_overall_avg.rename(columns={'aqi': 'Overall_Avg_AQI'}, inplace=True)
+    
+    city_yearly_avg = df.groupby(['city', 'Year'])['aqi'].mean().reset_index()
+    
+    ranked_cities = []
+    for index, row in city_overall_avg.iterrows():
+        city_name = row['city']
+        yearly_data = city_yearly_avg[city_yearly_avg['city'] == city_name]
         
-        # Create a numerical feature for time: number of days since the first reading
-        group['time_delta'] = (group['reading_date'] - group['reading_date'].min()).dt.days
-        
-        X = group[['time_delta']]
-        y = group['aqi']
-
-        model = LinearRegression()
-        model.fit(X, y)
-        
-        # The slope represents the change in AQI per day
-        slope_per_day = model.coef_[0]
-        
-        # A negative slope means the AQI is decreasing (improving)
-        if slope_per_day < 0:
-            improving_cities.append({
-                "city": city_name,
-                "slope_per_year": slope_per_day * 365.25 # Annualize the trend for better readability
-            })
-            
-    # Sort by the most rapidly improving cities first
-    improving_cities.sort(key=lambda x: x['slope_per_year'])
-    return improving_cities
-
+        ranked_cities.append({
+            'City': city_name,
+            'Overall_Avg_AQI': row['Overall_Avg_AQI'],
+            'Yearly_AQI': yearly_data.rename(columns={'aqi': 'AQI'}).to_dict(orient='records')
+        })
+    return ranked_cities
