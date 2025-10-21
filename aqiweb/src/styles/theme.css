@@ -1,0 +1,23 @@
+/* aqiweb/src/styles/theme.css */
+
+:root {
+  /* Color Palette */
+  --primary-bg: #f0f4f8;
+  --secondary-bg: #ffffff;
+  --header-text: #1e3a8a; /* Dark Blue */
+  --body-text: #334155; /* Slate Gray */
+  --subtle-text: #64748b;
+  --accent-color: #3b82f6; /* Bright Blue */
+  --accent-hover: #2563eb;
+  --success-text: #16a34a; /* Green */
+  --error-text: #dc2626; /* Red */
+  --border-color: #e2e8f0;
+
+  /* Typography */
+  --font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+
+  /* Spacing & Layout */
+  --container-padding: 1.5rem;
+  --component-spacing: 2.5rem;
+  --border-radius: 0.5rem;
+}

@@ -1,0 +1,95 @@
+/* aqiweb/src/styles/global.css */
+@import './theme.css'; /* Import theme variables */
+
+/* Base styles */
+body {
+  font-family: var(--font-family);
+  background-color: var(--primary-bg);
+  color: var(--body-text);
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* App container */
+.app-container {
+  min-height: 100vh;
+  padding: var(--container-padding);
+}
+
+/* Header */
+.app-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.app-title {
+  font-size: 2.25rem;
+  font-weight: bold;
+  color: var(--header-text);
+  margin-bottom: 0.5rem;
+}
+
+.app-subtitle {
+  color: var(--subtle-text);
+}
+
+/* Main content layout */
+.main-content {
+  max-width: 50rem;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--component-spacing);
+}
+
+/* Reusable card component */
+.card {
+  background-color: var(--secondary-bg);
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Form elements */
+.form-input {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 0.75rem 1rem;
+  transition: box-shadow 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Button styles */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--border-radius);
+  color: white;
+  background-color: var(--accent-color);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn:hover {
+  background-color: var(--accent-hover);
+}
+
+/* Utility classes */
+.text-success {
+  color: var(--success-text);
+}
+
+.text-error {
+  color: var(--error-text);
+  margin-top: 0.75rem;
+}

@@ -1,43 +1,123 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from analytics import get_yearly_data, predict_aqi_for_years, get_city_rankings_and_yearly_data
-from model_trainer import train_and_save_models
+from supabase_client import supabase
+from analytics import (
+    get_data_as_dataframe,
+    identify_improving_cities,
+    get_yearly_aqi_average,
+    get_aqi_by_date,
+)
+from model_trainer import train_and_save_model, predict_with_trained_model
+import traceback
+import os
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app)
 
-@app.route('/yearly_history/<city>', methods=['GET'])
-def yearly_history_data(city):
-    yearly_df = get_yearly_data(city)
-    if yearly_df is None or yearly_df.empty:
-        return jsonify({"error": f"Could not fetch yearly history for {city}."}), 404
-    return jsonify(yearly_df.to_dict(orient='records'))
+# --- Core API Endpoints ---
+@app.route('/api/city/<string:city_name>', methods=['GET'])
+def get_city_aqi(city_name):
+    """Gets the most recent AQI reading for a single city."""
+    try:
+        # ✨ CHANGE ✨: Order by 'created_at' instead of 'reading_date'
+        response = supabase.table('aqi_readings').select('*').eq('city', city_name).order('created_at', desc=True).limit(1).execute()
+        return jsonify(response.data[0] if response.data else {}), 200
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/predict/<city>', methods=['GET'])
-def predict_aqi(city):
-    years = request.args.get('years', 1, type=int)
-    predicted_mean, error = predict_aqi_for_years(city, years)
-    if error:
-        return jsonify({"error": error}), 404
-    response = {
-        "city": city,
-        "prediction": [{"month": date.strftime('%Y-%m'), "predicted_aqi": aqi} for date, aqi in predicted_mean.items()]
-    }
-    return jsonify(response)
+@app.route('/api/compare', methods=['GET'])
+def compare_cities():
+    """Gets the most recent AQI reading for all cities and returns the top 5 most polluted."""
+    try:
+        df = get_data_as_dataframe()
+        if df.empty:
+            return jsonify([]), 200
+        # ✨ CHANGE ✨: Sort by 'created_at' instead of 'reading_date'
+        latest_df = df.sort_values('created_at').groupby('city').tail(1)
+        top_cities = latest_df.sort_values('aqi', ascending=False).head(5)
+        return jsonify(top_cities.to_dict(orient='records')), 200
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/improving_cities', methods=['GET'])
-def improving_cities_data():
-    data = get_city_rankings_and_yearly_data()
-    if data is None:
-        return jsonify({"error": "Could not process city ranking data."}), 500
-    return jsonify(data)
+# --- (The rest of the file is unchanged as the logic is handled in the analytics/model_trainer files) ---
 
-@app.route('/train', methods=['POST'])
-def trigger_training():
-    result = train_and_save_models()
-    if result['status'] == 'error':
-        return jsonify(result), 500
-    return jsonify(result), 200
+# --- Analytics Endpoints ---
+@app.route('/api/analytics/improving', methods=['GET'])
+def improving_cities():
+    """Returns a list of cities with a statistically improving AQI trend."""
+    try:
+        improving = identify_improving_cities()
+        return jsonify({'improving_cities': improving}), 200
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/history/<string:city_name>', methods=['GET'])
+def city_aqi_history(city_name):
+    """Gets all historical data points for a given city."""
+    try:
+        history = get_aqi_by_date(city_name)
+        return jsonify(history), 200
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/yearly_history/<string:city_name>', methods=['GET'])
+def get_yearly_history(city_name):
+    """Gets the average AQI for each year for a given city."""
+    try:
+        yearly_data = get_yearly_aqi_average(city_name)
+        return jsonify(yearly_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --- Machine Learning Endpoints ---
+@app.route('/api/train-model', methods=['POST'])
+def handle_train_model():
+    """Triggers the model training process."""
+    try:
+        result = train_and_save_model()
+        if result['status'] == 'success':
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/forecast', methods=['POST'])
+def get_forecast():
+    """
+    Generates an AQI forecast using the trained RandomForest model.
+    Expects a JSON body: {"city": "CityName", "days": 30}
+    """
+    data = request.get_json()
+    if not data or 'city' not in data or 'days' not in data:
+        return jsonify({'error': 'Missing "city" or "days" in request body'}), 400
+
+    city = data['city']
+    days = data['days']
+
+    try:
+        predictions = predict_with_trained_model(city, days)
+        if not predictions:
+            return jsonify({'error': 'Could not generate prediction.'}), 404
+
+        aqi_values = [p['predicted_aqi'] for p in predictions]
+        response_data = {
+            'lowest_aqi': min(aqi_values),
+            'highest_aqi': max(aqi_values),
+            'predictions': predictions
+        }
+        return jsonify(response_data), 200
+    except FileNotFoundError:
+        return jsonify({'error': 'Model not found. Please train the model via the /api/train-model endpoint first.'}), 404
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
