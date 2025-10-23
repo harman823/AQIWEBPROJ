@@ -1,0 +1,6 @@
+models
+trained_model
+
+
+.env
+__pycache__/
