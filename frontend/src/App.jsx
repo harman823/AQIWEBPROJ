@@ -1,16 +1,29 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// src/App.jsx
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Layout from './components/Layout.jsx';
+import Home from './pages/Home.jsx';
+import Predictions from './pages/Predictions.jsx';
+import About from './pages/About.jsx';
+import Contact from './pages/Contact.jsx';
+import './index.css'; // Ensure Tailwind styles are imported
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <h1 className='text-3xl text-amber-400'>Vite + React</h1>
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+        {/* Use the Layout component to wrap all pages */}
+        <Route path="/" element={<Layout />}>
+          {/* Define routes for each page */}
+          <Route index element={<Home />} /> {/* index route for the homepage */}
+          <Route path="predictions" element={<Predictions />} />
+          <Route path="about" element={<About />} />
+          <Route path="contact" element={<Contact />} />
+          {/* Add a catch-all route for 404 Not Found if needed */}
+          {/* <Route path="*" element={<NotFound />} /> */}
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
