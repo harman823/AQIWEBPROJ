@@ -31,7 +31,8 @@ const CITIES = ['New York', 'London', 'Tokyo', 'Paris', 'Beijing', 'Delhi', 'Mum
 
 // --- Define Backend URL ---
 // Make sure this matches where your backend is running
-const API_BASE_URL = 'http://localhost:5000/api'; // Or your deployed backend URL
+const API_BASE_URL = 'https://malikharman823-AQIWEBPROJ.hf.space/api'; // Or your deployed backend URL
+ // Or your deployed backend URL
 
 // Consistent chart styling options (same as HistoryChart for consistency)
 const chartOptions = {

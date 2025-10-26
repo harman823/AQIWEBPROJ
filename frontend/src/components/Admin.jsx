@@ -2,7 +2,7 @@
 import { useState } from 'react';
 
 // Define Backend URL
-const API_BASE_URL = 'http://localhost:5000/api'; // Or your deployed backend URL
+const API_BASE_URL = 'https://malikharman823-AQIWEBPROJ.hf.space/api'; // Or your deployed backend URL
 
 // Helper function to handle fetch responses
 async function handleResponse(response) {
