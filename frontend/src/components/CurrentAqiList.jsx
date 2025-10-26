@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import feather from 'feather-icons';
 
 // Define Backend URL
-const API_BASE_URL = 'https://malikharman823-AQIWEBPROJ.hf.space/api'; // Or your deployed backend URL
+const API_BASE_URL = 'https://aqiwebproj.onrender.com'; // Or your deployed backend URL
 ; // Or your deployed backend URL
 
 // Helper function to handle fetch responses
