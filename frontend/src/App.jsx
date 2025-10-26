@@ -1,6 +1,5 @@
 // src/App.jsx
-import { HashRouter, Routes, Route } from 'react-router-dom';
-import Layout from './components/Layout.jsx';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';import Layout from './components/Layout.jsx';
 import Home from './pages/Home.jsx';
 import Predictions from './pages/Predictions.jsx';
 import About from './pages/About.jsx';
