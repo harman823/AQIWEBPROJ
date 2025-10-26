@@ -117,7 +117,11 @@ def get_forecast():
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-
+    
+@app.route('/', methods=['GET'])
+def health_check():
+    """Basic health check endpoint for Hugging Face Spaces."""
+    return jsonify({"status": "ok"}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
