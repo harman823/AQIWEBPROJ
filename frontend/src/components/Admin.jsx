@@ -2,7 +2,7 @@
 import { useState } from 'react';
 
 // Define Backend URL
-const API_BASE_URL = 'https://aqiwebproj.onrender.com/api'; // Ensure '/api' is here// Helper function to handle fetch responses
+const API_BASE_URL = 'https://aqiwebproj.onrender.com/api'; // Ensure '/api' is here// Ensure '/api' is here// Helper function to handle fetch responses
 async function handleResponse(response) {
   if (!response.ok) {
     let errorMessage = `HTTP error! status: ${response.status}`;
