@@ -11,9 +11,14 @@ from model_trainer import train_and_save_model, predict_with_trained_model
 import traceback
 import os
 
-app = Flask(__name__)
-CORS(app)
+# At the top with other imports
+from flask_cors import CORS
 
+app = Flask(__name__)
+# Be specific about the allowed origin
+CORS(app, origins=["https://aqiwebproj.vercel.app"])
+
+# ... rest of your app code
 # --- Core API Endpoints ---
 @app.route('/api/city/<string:city_name>', methods=['GET'])
 def get_city_aqi(city_name):

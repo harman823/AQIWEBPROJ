@@ -31,8 +31,7 @@ const CITIES = ['New York', 'London', 'Tokyo', 'Paris', 'Beijing', 'Delhi', 'Mum
 
 // --- Define Backend URL ---
 // Make sure this matches where your backend is running
-const API_BASE_URL = 'https://aqiwebproj.onrender.com'; // Or your deployed backend URL
- // Or your deployed backend URL
+const API_BASE_URL = 'https://aqiwebproj.onrender.com/api'; // <--- Add /api here // Or your deployed backend URL
 
 // Consistent chart styling options (same as HistoryChart for consistency)
 const chartOptions = {
