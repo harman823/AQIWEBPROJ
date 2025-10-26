@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 import feather from 'feather-icons';
 
 // Define Backend URL
-const API_BASE_URL = 'https://aqiwebproj.onrender.com/api'; // <--- Add /api here; // Or your deployed backend URL
-
+const API_BASE_URL = 'https://aqiwebproj.onrender.com/api'; // Ensure '/api' is here
 // Helper function to handle fetch responses
 async function handleResponse(response) {
   if (!response.ok) {
