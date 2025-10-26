@@ -16,7 +16,7 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 # Be specific about the allowed origin
-CORS(app, origins=["https://aqiwebproj.vercel.app"])
+CORS(app, origins=["https://aqiwebproj.vercel.app", "https://aqiwebproj-qjuusa84f-harman823s-projects.vercel.app"])
 
 # ... rest of your app code
 # --- Core API Endpoints ---
