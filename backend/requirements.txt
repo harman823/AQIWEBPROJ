@@ -5,3 +5,4 @@ pandas
 statsmodels
 flask-cors
 scikit-learn
+sklearn 
