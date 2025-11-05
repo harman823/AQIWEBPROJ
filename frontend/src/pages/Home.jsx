@@ -66,7 +66,7 @@ export default function Home() {
       <section className="py-16 bg-emerald-50"> {/* Light green background */}
         <div className="container mx-auto px-4">
           <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-emerald-800 mb-4">AI-Powered Forecast</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-emerald-800 mb-4">ML-Powered Forecast</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">See the predicted air quality for the next 7 days.</p>
           </div>
 
@@ -108,9 +108,9 @@ export default function Home() {
               <div className="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow">
                 <i data-feather="cpu" className="w-8 h-8"></i>
               </div>
-              <h3 className="text-xl font-bold text-emerald-800 mb-3">2. AI Modeling</h3>
+              <h3 className="text-xl font-bold text-emerald-800 mb-3">2. ML Modeling</h3>
               <p className="text-gray-600 text-sm leading-relaxed">
-                Our sophisticated AI models (like RandomForest) analyze millions of data points, identifying complex patterns and relationships affecting air quality.
+                Analyzes millions of data points, identifying complex patterns and relationships affecting air quality.
               </p>
             </div>
 
