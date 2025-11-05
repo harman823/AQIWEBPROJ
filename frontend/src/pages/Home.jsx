@@ -21,7 +21,7 @@ export default function Home() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight shadow-sm"> {/* Improved typography */}
-              Predict Air Quality with AI
+              Predict Air Quality of your city
             </h1>
             <p className="text-lg md:text-xl text-emerald-100 mb-10">
               Real-time AQI data and machine learning forecasts for major cities worldwide. Breathe easier, plan smarter.
