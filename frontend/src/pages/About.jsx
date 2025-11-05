@@ -77,7 +77,7 @@ export default function About() {
        <section className="py-16 bg-emerald-50"> {/* Light green background */}
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-emerald-800 mb-4">Meet the Team (Example)</h2>
+            <h2 className="text-3xl font-bold text-emerald-800 mb-4">Meet the Team</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">Dedicated professionals passionate about environmental data science.</p>
           </div>
           {/* Example Team Member Cards */}
@@ -88,34 +88,18 @@ export default function About() {
                  <div className="w-24 h-24 rounded-full bg-gray-300 mx-auto mb-4 flex items-center justify-center">
                      <i data-feather="user" className="w-12 h-12 text-gray-500"></i>
                  </div>
-                <h4 className="font-semibold text-lg text-gray-800">Alex Chen</h4>
-                <p className="text-sm text-emerald-600">Lead Data Scientist</p>
+                <h4 className="font-semibold text-lg text-gray-800">Harman Malik</h4>
+                <p className="text-sm text-emerald-600">Database Management & API Management</p>
             </div>
              {/* Card 2 */}
             <div className="bg-white rounded-lg shadow p-6 text-center">
                 <div className="w-24 h-24 rounded-full bg-gray-300 mx-auto mb-4 flex items-center justify-center">
                      <i data-feather="user" className="w-12 h-12 text-gray-500"></i>
                  </div>
-                <h4 className="font-semibold text-lg text-gray-800">Maria Garcia</h4>
-                <p className="text-sm text-emerald-600">Backend Engineer</p>
+                <h4 className="font-semibold text-lg text-gray-800">Anushka Agrahari</h4>
+                <p className="text-sm text-emerald-600">Frontend & Data Analyst</p>
             </div>
-             {/* Add more team members as needed */}
-             {/* Card 3 Placeholder */}
-             <div className="bg-white rounded-lg shadow p-6 text-center">
-                 <div className="w-24 h-24 rounded-full bg-gray-300 mx-auto mb-4 flex items-center justify-center">
-                      <i data-feather="user" className="w-12 h-12 text-gray-500"></i>
-                  </div>
-                 <h4 className="font-semibold text-lg text-gray-800">Sam Lee</h4>
-                 <p className="text-sm text-emerald-600">Frontend Developer</p>
-             </div>
-              {/* Card 4 Placeholder */}
-             <div className="bg-white rounded-lg shadow p-6 text-center">
-                 <div className="w-24 h-24 rounded-full bg-gray-300 mx-auto mb-4 flex items-center justify-center">
-                      <i data-feather="user" className="w-12 h-12 text-gray-500"></i>
-                  </div>
-                 <h4 className="font-semibold text-lg text-gray-800">Priya Sharma</h4>
-                 <p className="text-sm text-emerald-600">UI/UX Designer</p>
-             </div>
+            
           </div>
         </div>
       </section>
