@@ -16,18 +16,19 @@ def train_and_save_model():
     print("Starting model training process...")
     try:
         os.makedirs(MODEL_DIR, exist_ok=True)
-        df = get_data_as_dataframe()
+        df = get_data_as_dataframe() # Now robust with lowercase columns
+        
         if df.empty or len(df) < 50:
             return {"status": "error", "message": "Not enough data for training."}
         
-        # ✨ FIX: Ensure we have a Date column
-        if 'Date' not in df.columns:
-             return {"status": "error", "message": "'Date' column missing from data."}
+        if 'date' not in df.columns:
+             return {"status": "error", "message": "'date' column missing after processing."}
 
-        # ✨ FIX: Use 'Date' for feature engineering
-        df['day_of_year'] = df['Date'].dt.dayofyear
-        df['year'] = df['Date'].dt.year
+        # Feature Engineering
+        df['day_of_year'] = df['date'].dt.dayofyear
+        df['year'] = df['date'].dt.year
         
+        # One-hot encode cities
         df_encoded = pd.get_dummies(df, columns=['city'], drop_first=False)
 
         features = ['day_of_year', 'year'] + [col for col in df_encoded if col.startswith('city_')]
@@ -36,24 +37,21 @@ def train_and_save_model():
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        print("Training RandomForestRegressor model...")
         model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
         model.fit(X_train, y_train)
 
         predictions = model.predict(X_test)
         mse = mean_squared_error(y_test, predictions)
-        print(f"Model evaluation complete. MSE: {mse:.2f}")
 
         joblib.dump(model, MODEL_PATH)
         joblib.dump({'features': features}, METADATA_PATH)
 
         return {
             "status": "success",
-            "message": "Model trained and saved successfully.",
+            "message": f"Model trained successfully. MSE: {round(mse, 2)}",
             "mean_squared_error": round(mse, 2)
         }
     except Exception as e:
-        print("An error occurred during model training:")
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
@@ -68,18 +66,17 @@ def predict_with_trained_model(city: str, days: int) -> list:
     last_date = datetime.now()
     future_dates = [last_date + timedelta(days=i) for i in range(1, days + 1)]
     
-    # ✨ FIX: Create DataFrame with 'Date' column
     pred_df = pd.DataFrame({
-        'Date': future_dates,
+        'date': future_dates,
         'city': [city] * days
     })
 
-    # ✨ FIX: Use 'Date' for feature engineering
-    pred_df['day_of_year'] = pred_df['Date'].dt.dayofyear
-    pred_df['year'] = pred_df['Date'].dt.year
+    pred_df['day_of_year'] = pred_df['date'].dt.dayofyear
+    pred_df['year'] = pred_df['date'].dt.year
 
     pred_df_encoded = pd.get_dummies(pred_df, columns=['city'])
     
+    # Align columns
     final_pred_df = pd.DataFrame(columns=trained_features)
     for col in pred_df_encoded.columns:
         if col in final_pred_df.columns:
