@@ -13,19 +13,20 @@ MODEL_PATH = os.path.join(MODEL_DIR, "aqi_predictor.joblib")
 METADATA_PATH = os.path.join(MODEL_DIR, "model_metadata.joblib")
 
 def train_and_save_model():
-    """
-    Trains a model and saves it with its feature columns.
-    """
     print("Starting model training process...")
     try:
         os.makedirs(MODEL_DIR, exist_ok=True)
         df = get_data_as_dataframe()
         if df.empty or len(df) < 50:
-            return {"status": "error", "message": "Not enough data for training (requires at least 50 records)."}
+            return {"status": "error", "message": "Not enough data for training."}
+        
+        # ✨ FIX: Ensure we have a Date column
+        if 'Date' not in df.columns:
+             return {"status": "error", "message": "'Date' column missing from data."}
 
-        # ✨ CHANGE ✨: Use 'created_at' for feature engineering
-        df['day_of_year'] = df['created_at'].dt.dayofyear
-        df['year'] = df['created_at'].dt.year
+        # ✨ FIX: Use 'Date' for feature engineering
+        df['day_of_year'] = df['Date'].dt.dayofyear
+        df['year'] = df['Date'].dt.year
         
         df_encoded = pd.get_dummies(df, columns=['city'], drop_first=False)
 
@@ -45,7 +46,6 @@ def train_and_save_model():
 
         joblib.dump(model, MODEL_PATH)
         joblib.dump({'features': features}, METADATA_PATH)
-        print(f"Model and metadata successfully saved.")
 
         return {
             "status": "success",
@@ -58,11 +58,8 @@ def train_and_save_model():
         return {"status": "error", "message": str(e)}
 
 def predict_with_trained_model(city: str, days: int) -> list:
-    """
-    Loads the trained model and predicts future AQI.
-    """
     if not os.path.exists(MODEL_PATH) or not os.path.exists(METADATA_PATH):
-        raise FileNotFoundError("Model or metadata not found. Please train the model first.")
+        raise FileNotFoundError("Model not found.")
 
     model = joblib.load(MODEL_PATH)
     metadata = joblib.load(METADATA_PATH)
@@ -71,15 +68,15 @@ def predict_with_trained_model(city: str, days: int) -> list:
     last_date = datetime.now()
     future_dates = [last_date + timedelta(days=i) for i in range(1, days + 1)]
     
-    # ✨ CHANGE ✨: Use 'created_at' as the column name
+    # ✨ FIX: Create DataFrame with 'Date' column
     pred_df = pd.DataFrame({
-        'created_at': future_dates,
+        'Date': future_dates,
         'city': [city] * days
     })
 
-    # ✨ CHANGE ✨: Use 'created_at' for feature engineering
-    pred_df['day_of_year'] = pred_df['created_at'].dt.dayofyear
-    pred_df['year'] = pred_df['created_at'].dt.year
+    # ✨ FIX: Use 'Date' for feature engineering
+    pred_df['day_of_year'] = pred_df['Date'].dt.dayofyear
+    pred_df['year'] = pred_df['Date'].dt.year
 
     pred_df_encoded = pd.get_dummies(pred_df, columns=['city'])
     

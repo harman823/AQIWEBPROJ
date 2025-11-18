@@ -11,21 +11,19 @@ from model_trainer import train_and_save_model, predict_with_trained_model
 import traceback
 import os
 
-# At the top with other imports
-from flask_cors import CORS
-
 app = Flask(__name__)
-# Be specific about the allowed origin
-CORS(app, origins=["https://aqiwebproj.vercel.app", "https://aqiwebproj-qjuusa84f-harman823s-projects.vercel.app"])
 
-# ... rest of your app code
+# ✨ FIX: Allow requests from your local frontend and deployed frontend
+CORS(app, origins=["https://aqiwebproj.vercel.app", "https://aqiwebproj-qjuusa84f-harman823s-projects.vercel.app", "http://localhost:5173"])
+
 # --- Core API Endpoints ---
 @app.route('/api/city/<string:city_name>', methods=['GET'])
 def get_city_aqi(city_name):
     """Gets the most recent AQI reading for a single city."""
     try:
-        # ✨ CHANGE ✨: Order by 'created_at' instead of 'reading_date'
-        response = supabase.table('aqi_readings').select('*').eq('city', city_name).order('created_at', desc=True).limit(1).execute()
+        # ✨ FIX: Changed 'created_at' to 'Date' to match your CSV columns
+        # Using "Date" (capitalized) as it appears in your CSV
+        response = supabase.table('aqi_readings').select('*').eq('city', city_name).order('Date', desc=True).limit(1).execute()
         return jsonify(response.data[0] if response.data else {}), 200
     except Exception as e:
         traceback.print_exc()
@@ -38,15 +36,19 @@ def compare_cities():
         df = get_data_as_dataframe()
         if df.empty:
             return jsonify([]), 200
-        # ✨ CHANGE ✨: Sort by 'created_at' instead of 'reading_date'
-        latest_df = df.sort_values('created_at').groupby('city').tail(1)
+        
+        # ✨ FIX: Use 'Date' column for sorting
+        if 'Date' in df.columns:
+            latest_df = df.sort_values('Date').groupby('city').tail(1)
+        else:
+            # Fallback if Date is missing
+            latest_df = df.groupby('city').tail(1)
+
         top_cities = latest_df.sort_values('aqi', ascending=False).head(5)
         return jsonify(top_cities.to_dict(orient='records')), 200
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-
-# --- (The rest of the file is unchanged as the logic is handled in the analytics/model_trainer files) ---
 
 # --- Analytics Endpoints ---
 @app.route('/api/analytics/improving', methods=['GET'])
@@ -125,11 +127,9 @@ def get_forecast():
     
 @app.route('/', methods=['GET'])
 def health_check():
-    """Basic health check endpoint for Hugging Face Spaces."""
+    """Basic health check endpoint."""
     return jsonify({"status": "ok"}), 200
 
 if __name__ == '__main__':
-    # Get port from environment variable, default to 5000 if not set (for local testing)
     port = int(os.environ.get('PORT', 5000))
-    # Run the app, binding to 0.0.0.0 and the correct port
     app.run(host='0.0.0.0', port=port, debug=False)

@@ -7,6 +7,7 @@ import traceback
 def get_data_as_dataframe() -> pd.DataFrame:
     """
     Fetches all records from public.aqi_readings and returns a pandas DataFrame.
+    Includes data type conversion and mean imputation for numerical columns.
     """
     try:
         response = supabase.table("aqi_readings").select("*").execute()
@@ -19,16 +20,27 @@ def get_data_as_dataframe() -> pd.DataFrame:
         raise e
 
     df = pd.DataFrame(data)
-    # ✨ CHANGE ✨: Only need to process 'created_at' now
-    if 'created_at' in df.columns:
-        df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors="coerce")
-
-    numeric_cols = ["pm2_5", "pm10", "no2", "aqi"]
+    
+    # ✨ FIX: Handle the 'Date' column from your CSV
+    if 'Date' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'], errors="coerce")
+    elif 'created_at' in df.columns:
+        # Fallback to created_at if Date doesn't exist
+        df['Date'] = pd.to_datetime(df['created_at'], utc=True, errors="coerce")
+        
+    # 2. Define numerical columns for conversion and imputation
+    numeric_cols = ["pm2_5", "pm10", "no", "no2", "nox", "nh3", "co", "so2", "o3", "benzene", "toluene", "xylene", "aqi"] 
+    
     for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
+            
+    # 3. Mean Imputation
+    df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
+
     if "city" in df.columns:
         df["city"] = df["city"].astype(str).str.strip()
+        
     return df
 
 def identify_improving_cities(min_points: int = 3) -> List[Dict[str, object]]:
@@ -36,11 +48,10 @@ def identify_improving_cities(min_points: int = 3) -> List[Dict[str, object]]:
     Performs a linear regression of AQI over time for each city.
     """
     df = get_data_as_dataframe()
-    if df.empty:
+    if df.empty or 'Date' not in df.columns:
         return []
 
-    # ✨ CHANGE ✨: Use 'created_at'
-    analysis_df = df.dropna(subset=["created_at", "aqi", "city"]).copy()
+    analysis_df = df.dropna(subset=["Date", "aqi", "city"]).copy()
     if analysis_df.empty:
         return []
 
@@ -49,10 +60,8 @@ def identify_improving_cities(min_points: int = 3) -> List[Dict[str, object]]:
         try:
             if len(group) < min_points:
                 continue
-            # ✨ CHANGE ✨: Use 'created_at'
-            group = group.sort_values("created_at")
-            # ✨ CHANGE ✨: Use 'created_at'
-            timestamps = group["created_at"].apply(lambda x: x.timestamp()).values.reshape(-1, 1)
+            group = group.sort_values("Date")
+            timestamps = group["Date"].apply(lambda x: x.timestamp()).values.reshape(-1, 1)
             y = group["aqi"].values.reshape(-1, 1)
             model = LinearRegression()
             model.fit(timestamps, y)
@@ -73,19 +82,18 @@ def get_aqi_by_date(city: str) -> List[Dict[str, object]]:
     Returns the historical AQI data for a given city.
     """
     df = get_data_as_dataframe()
-    if df.empty:
+    if df.empty or 'Date' not in df.columns:
         return []
     
     city_df = df[df["city"] == city].copy()
     if city_df.empty:
         return []
 
-    # ✨ CHANGE ✨: Use 'created_at'
-    city_df = city_df.dropna(subset=["created_at", "aqi"]).sort_values("created_at")
+    city_df = city_df.sort_values("Date")
     
     return [
-        # ✨ CHANGE ✨: Use 'created_at' but keep the JSON key as 'date' for frontend compatibility
-        {"date": row["created_at"].isoformat(), "aqi": row["aqi"]}
+        # Return date as string for frontend
+        {"date": row["Date"].strftime('%Y-%m-%d'), "aqi": row["aqi"]}
         for _, row in city_df.iterrows()
     ]
 
@@ -94,16 +102,14 @@ def get_yearly_aqi_average(city: str) -> List[Dict[str, object]]:
     Calculates the average AQI per year for a given city.
     """
     df = get_data_as_dataframe()
-    if df.empty:
+    if df.empty or 'Date' not in df.columns:
         return []
     
     city_df = df[df['city'] == city].copy()
     if city_df.empty:
         return []
 
-    # ✨ CHANGE ✨: Use 'created_at'
-    city_df = city_df.dropna(subset=['created_at', 'aqi'])
-    city_df['year'] = city_df['created_at'].dt.year
+    city_df['year'] = city_df['Date'].dt.year
     
     yearly_avg = city_df.groupby('year')['aqi'].mean().reset_index()
     yearly_avg.rename(columns={'aqi': 'average_aqi'}, inplace=True)

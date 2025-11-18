@@ -1,267 +1,254 @@
 // src/components/PredictionChart.jsx
-import { useState, useEffect } from 'react';
-import { Line } from 'react-chartjs-2';
-// NOTE: Removed 'import * as api from '../apiService.js';'
+import { useEffect, useState, useMemo } from "react";
+import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
-  LineElement,
-  PointElement,
+  CategoryScale,
   LinearScale,
-  TimeScale,
+  PointElement,
+  LineElement,
+  Title,
   Tooltip,
   Legend,
   Filler,
-} from 'chart.js';
-import 'chartjs-adapter-date-fns'; // Import the date adapter
+} from "chart.js";
 
-
-// Register Chart.js components
 ChartJS.register(
-  LineElement,
-  PointElement,
+  CategoryScale,
   LinearScale,
-  TimeScale, // Register TimeScale
+  PointElement,
+  LineElement,
+  Title,
   Tooltip,
   Legend,
   Filler
 );
 
-// A list of cities for the dropdown
-const CITIES = ['New York', 'London', 'Tokyo', 'Paris', 'Beijing', 'Delhi', 'Mumbai']; // Added Mumbai
+const API_BASE_URL = "https://aqiwebproj.onrender.com/api";
+// Fallback City List (Should ideally be imported or passed via props)
+const DEFAULT_CITIES = [
+  "Ahmedabad",
+  "Aizawl",
+  "Amaravati",
+  "Amritsar",
+  "Bengaluru",
+  "Bhopal",
+  "Chennai",
+  "Coimbatore",
+  "Delhi",
+  "Ernakulam",
+  "Gandhinagar",
+  "Gurugram",
+  "Guwahati",
+  "Hyderabad",
+  "Jaipur",
+  "Jorapokhar",
+  "Kochi",
+  "Kolkata",
+  "Lucknow",
+  "Mumbai",
+  "Patna",
+  "Shillong",
+  "Thiruvananthapuram",
+  "Visakhapatnam",
+];
 
-// --- Define Backend URL ---
-// Make sure this matches where your backend is running
-const API_BASE_URL = 'https://aqiwebproj.onrender.com/api'; // Ensure '/api' is here// Ensure '/api' is here
-// Consistent chart styling options (same as HistoryChart for consistency)
-const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false, // Allows chart to fill container height
-    plugins: {
-      legend: {
-          position: 'top', // Position legend at the top
-          labels: {
-              color: "#6b7280", // Gray color for labels (Tailwind gray-500)
-              padding: 15, // Add padding to legend items
-          }
-       },
-       tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.7)', // Darker tooltip background
-          titleColor: '#ffffff', // White title color
-          bodyColor: '#ffffff', // White body color
-          callbacks: {
-              // Format tooltip label
-              label: (context) => `${context.dataset.label || ''}: ${context.parsed.y !== null ? Math.round(context.parsed.y) : 'N/A'}`,
-            },
-       }
-    },
-    scales: {
-      x: {
-        type: "time", // Specify x-axis is time-based
-        time: {
-          unit: 'day', // Display units in days
-          tooltipFormat: 'MMM d, yyyy', // Format for tooltips
-          displayFormats: {
-             day: 'MMM d' // Format for axis labels (e.g., Oct 26)
-          }
-        },
-        grid: {
-          color: "#e5e7eb", // Lighter grid lines (Tailwind gray-200)
-        },
-        ticks: {
-          color: "#9ca3af", // Medium gray ticks (Tailwind gray-400)
-          maxRotation: 0, // Prevent label rotation
-          autoSkip: true, // Automatically skip labels to prevent overlap
-          maxTicksLimit: 7 // Show max 7 days
-        },
-         title: {
-           display: true,
-           text: 'Date',
-           color: '#6b7280'
-         }
-      },
-      y: {
-        grid: {
-          color: "#e5e7eb", // Lighter grid lines
-        },
-        ticks: {
-          color: "#9ca3af", // Medium gray ticks
-          stepSize: 50, // Adjust step size based on expected AQI range
-        },
-        beginAtZero: true, // Start y-axis at 0
-        suggestedMax: 250, // Suggest a max value, chartjs will adjust if needed
-        title: {
-          display: true,
-          text: 'Predicted AQI Value',
-          color: '#6b7280'
-        }
-      },
-    },
-    elements: {
-      line: {
-        tension: 0.1, // Slight curve to the line
-        borderColor: "#10B981", // Emerald-500 border
-        borderWidth: 2, // Thinner line
-        fill: true, // Fill area under the line
-        backgroundColor: "rgba(16, 185, 129, 0.1)", // Light emerald fill
-      },
-      point: {
-        radius: 3, // Show small points
-        hoverRadius: 6, // Larger points on hover
-        backgroundColor: "#10B981", // Emerald point color
-      }
-    },
-    interaction: {
-        mode: 'index', // Show tooltips for all datasets at the same x-index
-        intersect: false, // Tooltip will show even if not directly hovering over point/line
-    },
-  };
-
-// Helper function to handle fetch responses (moved from apiService.js)
-async function handleResponse(response) {
-  if (!response.ok) {
-    let errorMessage = `HTTP error! status: ${response.status}`;
-    try {
-      // Try to parse error message from backend
-      const errorData = await response.json();
-      errorMessage = errorData.message || errorData.error || errorMessage;
-    } catch (e) {
-      // If response isn't JSON or has no message, use the status text
-      errorMessage = `${response.status} ${response.statusText || 'Error'}`;
-    }
-    throw new Error(errorMessage);
-  }
-  // Check for empty response before parsing JSON
-  const text = await response.text();
-  return text ? JSON.parse(text) : {}; // Return empty object for empty response
+// Helper function to get text color class based on AQI (Tailwind classes)
+function getAqiColor(aqi) {
+  if (aqi <= 50) return { point: "#10B981", line: "rgba(16, 185, 129, 0.1)" }; // Good: Emerald-500
+  if (aqi <= 100) return { point: "#FBBF24", line: "rgba(251, 191, 36, 0.1)" }; // Moderate: Amber-500
+  if (aqi <= 150) return { point: "#F97316", line: "rgba(249, 115, 22, 0.1)" }; // Unhealthy for Sensitive: Orange-600
+  if (aqi <= 200) return { point: "#EF4444", line: "rgba(239, 68, 68, 0.1)" }; // Unhealthy: Red-500
+  if (aqi <= 300) return { point: "#8B5CF6", line: "rgba(139, 92, 246, 0.1)" }; // Very Unhealthy: Violet-500
+  return { point: "#7E22CE", line: "rgba(126, 34, 206, 0.1)" }; // Hazardous: Purple-700
 }
 
+const defaultOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: true },
+    tooltip: { mode: "index", intersect: false },
+  },
+  scales: {
+    x: {
+      title: { display: true, text: "Date", color: "#6b7280" },
+      grid: { color: "#e5e7eb" },
+      ticks: { color: "#9ca3af" },
+    },
+    y: {
+      title: { display: true, text: "Predicted AQI Value", color: "#6b7280" },
+      beginAtZero: true,
+      suggestedMax: 200,
+      grid: { color: "#e5e7eb" },
+      ticks: { color: "#9ca3af" },
+    },
+  },
+  elements: {
+    line: { tension: 0.3, borderWidth: 3, fill: true },
+    point: { radius: 5, hoverRadius: 8 },
+  },
+};
 
-export default function PredictionChart() {
-  const [selectedCity, setSelectedCity] = useState(CITIES[0]);
-  const [chartData, setChartData] = useState({ labels: [], datasets: [] });
-  const [isLoading, setIsLoading] = useState(true);
+export default function PredictionChart({ days = 7, cities = DEFAULT_CITIES }) {
+  const [selectedCity, setSelectedCity] = useState(cities[0]);
+  const [forecastData, setForecastData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     async function fetchForecast() {
-      // Abort previous fetch if a new city is selected quickly
-      const controller = new AbortController();
-      const signal = controller.signal;
+      if (!selectedCity) return;
+
+      setIsLoading(true);
+      setError(null);
+      setForecastData(null);
 
       try {
-        setIsLoading(true);
-        setError(null); // Clear previous errors
-
-        // --- Direct Fetch Call ---
         const response = await fetch(`${API_BASE_URL}/forecast`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ city: selectedCity, days: 7 }), // Request 7-day forecast
-          signal: signal // Pass the abort signal
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ city: selectedCity, days: days }),
         });
 
-        const data = await handleResponse(response); // Use the helper
-        // --- End Direct Fetch Call ---
+        const data = await response.json();
 
-
-        if (!data.predictions || data.predictions.length === 0) {
-           // Set error state if predictions are missing or empty
-           setError(`No prediction data returned for ${selectedCity}.`);
-           setChartData({ labels: [], datasets: [] }); // Clear chart
-        } else {
-            // Process data for Chart.js
-            const labels = data.predictions.map(p => new Date(p.date)); // Use Date objects for time scale
-            const aqiValues = data.predictions.map(p => (p.predicted_aqi !== null && p.predicted_aqi !== undefined ? p.predicted_aqi : NaN)); // Handle nulls
-
-            setChartData({
-            labels: labels,
-            datasets: [
-                {
-                label: `Predicted AQI for ${selectedCity}`,
-                data: aqiValues,
-                // Styling is now handled by chartOptions.elements
-                },
-                // Potential future: Confidence bands could be added here if API provides them
-                // {
-                //   label: 'Lower Confidence', data: lowerBandValues, fill: '+1', ...
-                // },
-                // {
-                //   label: 'Upper Confidence', data: upperBandValues, fill: '-1', ...
-                // }
-            ],
-            });
+        if (!response.ok) {
+          setError(data.error || "Failed to fetch prediction.");
+          return;
         }
+
+        setForecastData(data);
       } catch (err) {
-         if (err.name === 'AbortError') {
-             console.log('Fetch aborted'); // Ignore abort errors
-         } else {
-            setError(err.message || 'Failed to fetch forecast'); // Set error message
-            console.error(`Failed to fetch forecast for ${selectedCity}:`, err);
-            setChartData({ labels: [], datasets: [] }); // Clear chart on error
-         }
+        setError("Network error or API server is down.");
+        console.error("Forecast fetch error:", err);
       } finally {
         setIsLoading(false);
       }
-
-      // Cleanup function to abort fetch if component unmounts or city changes
-      return () => {
-        controller.abort();
-      };
     }
 
     fetchForecast();
-  }, [selectedCity]); // Re-run this effect when selectedCity changes
+  }, [selectedCity, days]);
+
+  const chartConfig = useMemo(() => {
+    if (!forecastData || forecastData.predictions.length === 0)
+      return { labels: [], datasets: [] };
+
+    const predictions = forecastData.predictions;
+    const firstAqi = predictions[0].predicted_aqi;
+    const { point: pointColor, line: lineColor } = getAqiColor(firstAqi);
+
+    return {
+      labels: predictions.map((p) => p.date),
+      datasets: [
+        {
+          label: `Predicted AQI for ${selectedCity}`,
+          data: predictions.map((p) => p.predicted_aqi),
+          borderColor: pointColor,
+          backgroundColor: lineColor,
+          pointBackgroundColor: pointColor,
+          pointBorderColor: "#fff",
+          pointHoverBackgroundColor: pointColor,
+          pointHoverBorderColor: pointColor,
+        },
+      ],
+    };
+  }, [forecastData, selectedCity]);
+
+  const options = useMemo(() => {
+    if (forecastData) {
+      const suggestedMax = Math.max(300, forecastData.highest_aqi + 50);
+      return {
+        ...defaultOptions,
+        scales: {
+          ...defaultOptions.scales,
+          y: {
+            ...defaultOptions.scales.y,
+            suggestedMax: suggestedMax,
+          },
+        },
+      };
+    }
+    return defaultOptions;
+  }, [forecastData]);
 
   return (
-    <>
-      <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4"> {/* Adjusted spacing and layout */}
-        <h3 className="text-xl md:text-2xl font-bold text-emerald-800 whitespace-nowrap">
-          7-Day Forecast: <span className="text-emerald-600">{selectedCity}</span>
-        </h3>
-        <div className="flex items-center space-x-2 w-full sm:w-auto">
-          <label htmlFor="city-selector" className="text-sm text-gray-600">City:</label> {/* Added label */}
+    <div>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-3 md:mb-0">
+          AQI Forecast ({days} Days)
+        </h2>
+
+        {/* City Selector Dropdown */}
+        <div className="flex items-center space-x-2">
+          <label htmlFor="city-select" className="text-gray-600 font-medium">
+            Select City:
+          </label>
           <select
-            id="city-selector"
+            id="city-select"
             value={selectedCity}
             onChange={(e) => setSelectedCity(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-full sm:w-auto" // Adjusted styling
-            disabled={isLoading} // Disable while loading
+            className="border border-gray-300 rounded-lg p-2 text-gray-700 focus:ring-emerald-500 focus:border-emerald-500"
+            disabled={isLoading}
           >
-            {CITIES.map(city => (
-              <option key={city} value={city}>{city}</option>
+            {cities.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Chart container */}
-      <div className="relative h-72 md:h-80"> {/* Defined height */}
-        {/* Loading State */}
+      <div className="relative h-96">
         {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
-                <p className="text-gray-500 text-sm">Loading forecast...</p>
-                 {/* Optional: Add a spinner icon here */}
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+            <p className="text-lg text-emerald-600 animate-pulse">
+              Generating forecast...
+            </p>
+          </div>
         )}
-        {/* Error State */}
-        {error && !isLoading && (
-             <div className="absolute inset-0 flex items-center justify-center">
-                 <p className="text-center text-red-600 text-sm px-4">Error: {error}</p>
-             </div>
+
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-red-50 p-4 rounded-lg">
+            <p className="text-red-700 text-center font-medium">
+              Error: {error}
+              <br />
+              {error.includes("Model not found") &&
+                "Please navigate to the Predictions page and click the 'Retrain ML Model' button."}
+            </p>
+          </div>
         )}
-        {/* No Data State (after loading, no error, but no predictions) */}
-        {!isLoading && !error && (!chartData.datasets[0] || chartData.datasets[0].data.length === 0) && (
-            <div className="absolute inset-0 flex items-center justify-center">
-                 <p className="text-center text-gray-500 text-sm">No prediction data available for {selectedCity}.</p>
-             </div>
+
+        {!isLoading && !error && forecastData && (
+          <Line options={options} data={chartConfig} />
         )}
-        {/* Chart Render (only if not loading, no error, and data exists) */}
-        {!isLoading && !error && chartData.datasets[0] && chartData.datasets[0].data.length > 0 && (
-          <Line options={chartOptions} data={chartData} />
+
+        {!isLoading && !error && !forecastData && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className="text-gray-500">
+              Select a city and generate a prediction.
+            </p>
+          </div>
         )}
       </div>
-    </>
+
+      {forecastData && (
+        <div className="mt-6 flex justify-around text-center border-t pt-4">
+          <p className="text-sm font-medium text-gray-600">
+            Lowest Predicted AQI:{" "}
+            <span className="text-lg font-bold text-green-600">
+              {Math.round(forecastData.lowest_aqi)}
+            </span>
+          </p>
+          <p className="text-sm font-medium text-gray-600">
+            Highest Predicted AQI:{" "}
+            <span className="text-lg font-bold text-red-600">
+              {Math.round(forecastData.highest_aqi)}
+            </span>
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
