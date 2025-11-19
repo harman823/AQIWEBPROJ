@@ -1,24 +1,23 @@
 // src/App.jsx
-import { BrowserRouter, Routes, Route } from 'react-router-dom';import Layout from './components/Layout.jsx';
-import Home from './pages/Home.jsx';
-import Predictions from './pages/Predictions.jsx';
-import About from './pages/About.jsx';
-import Contact from './pages/Contact.jsx';
-import './index.css'; // Ensure Tailwind styles are imported
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout.jsx";
+import Home from "./pages/Home.jsx";
+import Predictions from "./pages/Predictions.jsx";
+import Trends from "./pages/Trends.jsx"; // <--- Import Trends
+import About from "./pages/About.jsx";
+import Contact from "./pages/Contact.jsx";
+import "./index.css";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Use the Layout component to wrap all pages */}
         <Route path="/" element={<Layout />}>
-          {/* Define routes for each page */}
-          <Route index element={<Home />} /> {/* index route for the homepage */}
+          <Route index element={<Home />} />
           <Route path="predictions" element={<Predictions />} />
+          <Route path="trends" element={<Trends />} /> {/* <--- Add Route */}
           <Route path="about" element={<About />} />
           <Route path="contact" element={<Contact />} />
-          {/* Add a catch-all route for 404 Not Found if needed */}
-          {/* <Route path="*" element={<NotFound />} /> */}
         </Route>
       </Routes>
     </BrowserRouter>

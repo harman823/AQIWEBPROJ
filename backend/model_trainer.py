@@ -7,6 +7,7 @@ import traceback
 from analytics import get_data_as_dataframe
 from datetime import datetime, timedelta
 import os
+import numpy as np
 
 MODEL_DIR = "trained_model"
 MODEL_PATH = os.path.join(MODEL_DIR, "aqi_predictor.joblib")
@@ -54,6 +55,92 @@ def train_and_save_model():
     except Exception as e:
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
+
+def get_forecast_trends(days=30):
+    """
+    Generates a 30-day forecast for all available cities and calculates 
+    whether they are improving (negative slope) or worsening (positive slope).
+    """
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(METADATA_PATH):
+        return {"error": "Model not trained yet. Please train the model first."}
+
+    try:
+        # Load model once for efficiency
+        model = joblib.load(MODEL_PATH)
+        metadata = joblib.load(METADATA_PATH)
+        trained_features = metadata['features']
+        
+        # Get list of unique cities from the actual data
+        df = get_data_as_dataframe()
+        if df.empty or 'city' not in df.columns:
+            return {"error": "No city data available."}
+        
+        cities = df['city'].unique()
+        results = []
+
+        last_date = datetime.now()
+        future_dates = [last_date + timedelta(days=i) for i in range(1, days + 1)]
+
+        # Create a numeric sequence for slope calculation (0, 1, 2, ... 29)
+        x = np.arange(days)
+
+        for city in cities:
+            try:
+                # 1. Prepare prediction dataframe for this city
+                pred_df = pd.DataFrame({
+                    'date': future_dates,
+                    'city': [city] * days
+                })
+                pred_df['day_of_year'] = pred_df['date'].dt.dayofyear
+                pred_df['year'] = pred_df['date'].dt.year
+
+                # 2. Encode
+                pred_df_encoded = pd.get_dummies(pred_df, columns=['city'])
+
+                # 3. Align columns with trained model features
+                final_pred_df = pd.DataFrame(columns=trained_features)
+                for col in pred_df_encoded.columns:
+                    if col in final_pred_df.columns:
+                        final_pred_df[col] = pred_df_encoded[col]
+                
+                final_pred_df.fillna(0, inplace=True)
+                final_pred_df = final_pred_df[trained_features]
+
+                # 4. Predict
+                predictions = model.predict(final_pred_df)
+
+                # 5. Calculate Trend (Slope) using numpy
+                # Slope < 0: AQI going down (Improving)
+                # Slope > 0: AQI going up (Worsening)
+                slope, _ = np.polyfit(x, predictions, 1)
+
+                results.append({
+                    "city": city,
+                    "slope": round(slope, 4),
+                    "current_forecast": round(predictions[0]),
+                    "future_forecast": round(predictions[-1]),
+                    "change": round(predictions[-1] - predictions[0])
+                })
+            except Exception as e:
+                print(f"Error processing city {city}: {e}")
+                continue
+
+        # Sort into categories
+        # Improving: Negative slope (AQI decreasing)
+        improving = sorted([r for r in results if r['slope'] < 0], key=lambda x: x['slope'])
+        
+        # Worsening: Positive slope (AQI increasing)
+        worsening = sorted([r for r in results if r['slope'] >= 0], key=lambda x: x['slope'], reverse=True)
+
+        return {
+            "status": "success",
+            "improving": improving,
+            "worsening": worsening
+        }
+
+    except Exception as e:
+        traceback.print_exc()
+        return {"error": str(e)}
 
 def predict_with_trained_model(city: str, days: int) -> list:
     if not os.path.exists(MODEL_PATH) or not os.path.exists(METADATA_PATH):

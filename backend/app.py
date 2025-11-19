@@ -9,6 +9,7 @@ from analytics import (
 )
 from model_trainer import train_and_save_model, predict_with_trained_model
 import traceback
+from model_trainer import train_and_save_model, predict_with_trained_model, get_forecast_trends # Import here
 import os
 
 app = Flask(__name__)
@@ -91,6 +92,17 @@ def get_forecast():
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/forecast-trends', methods=['GET'])
+def forecast_trends_route():
+    try:
+        # Calculate trends based on 30-day forecast
+        trends = get_forecast_trends(days=30)
+        if 'error' in trends:
+            return jsonify(trends), 400
+        return jsonify(trends), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500    
 
 @app.route('/', methods=['GET'])
 def health_check():
